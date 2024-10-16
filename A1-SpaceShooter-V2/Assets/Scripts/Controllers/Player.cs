@@ -9,16 +9,23 @@ public class Player : MonoBehaviour
     public GameObject bombPrefab;
     public Transform bombsTransform;
     public GameObject powerupPrefab;
+    public GameObject bulletPrefab;
+    public GameObject missilePrefab;
+
+
     public int radarPoints;
     public float radarRadius;
 
-    Vector3 velocity;
+    public Vector3 velocity;
     float acceleration;
     float accelerationTime = 0.5f;
     float maxSpeed = 10;
 
     float deceleration;
     float decelerationTime = 0.4f;
+
+    float fireCooldown = 0;
+    int missileCount;
 
     List<float> circleAngles = new List<float>();
 
@@ -31,14 +38,41 @@ public class Player : MonoBehaviour
 
     void Update()
     {
+        
         PlayerMovement();
         EnemyRadar(radarRadius, radarPoints);
 
+        fireCooldown -= Time.deltaTime;
+        fireCooldown = Mathf.Clamp01(fireCooldown);
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            SpawnPowerups(2, 9);
+            //SpawnPowerups(2, 9);
+            if (fireCooldown == 0)
+            {
+                fireCooldown = 1;
+
+                if (missileCount < 5)
+                {
+                    FireBullet();
+                    missileCount += 1;
+                } else
+                {
+                    FireMissile();
+                    missileCount = 0;
+                }
+            }
         }
 
+    }
+
+    void FireMissile()
+    {
+        Instantiate(missilePrefab, transform.position, Quaternion.identity, bombsTransform);
+    }
+
+    void FireBullet()
+    {
+        Instantiate(bulletPrefab, transform.position, Quaternion.identity, bombsTransform).GetComponent<Bomb>().velocity = velocity;
     }
 
     void SpawnPowerups(float radius, int numberOfPowerups)
@@ -76,34 +110,38 @@ public class Player : MonoBehaviour
 
     void PlayerMovement()
     {
-        
- 
-            Vector3 direction = new Vector3(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
-            velocity += direction.normalized * acceleration * Time.deltaTime;
-            if (velocity.magnitude > maxSpeed)
-            {
-                velocity = velocity.normalized * maxSpeed;
-            } else if (velocity.magnitude < -maxSpeed)
-            {
-                velocity = velocity.normalized * -maxSpeed;
-            }
-        
+        if (velocity.magnitude > 0.2f)
+        {
+            transform.localEulerAngles = new Vector3(0, 0, Mathf.Rad2Deg * Mathf.Atan2(velocity.y, velocity.x) - 90);
+        }
+
+        Vector3 direction = new Vector3(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+        velocity += direction.normalized * acceleration * Time.deltaTime;
+        if (velocity.magnitude > maxSpeed)
+        {
+            velocity = velocity.normalized * maxSpeed;
+        } else if (velocity.magnitude < -maxSpeed)
+        {
+            velocity = velocity.normalized * -maxSpeed;
+        }
+
         if (Input.GetAxisRaw("Vertical") == 0)
         {
             velocity.y += velocity.normalized.y * deceleration * Time.deltaTime;
-            //if (velocity.y < 0.01f)
+            //if (Mathf.Abs(velocity.y) < 0.1f)
             //{
             //    velocity.y = 0;
-            //}
+            //} 
         }
         if (Input.GetAxisRaw("Horizontal") == 0)
         {
             velocity.x += velocity.normalized.x * deceleration * Time.deltaTime;
-            //if (velocity.x < 0.01f)
+            //if (Mathf.Abs(velocity.x) < 0.1f)
             //{
             //    velocity.x = 0;
-            //}
+            //} 
         }
         transform.position += velocity * Time.deltaTime;
+
     }
 }
